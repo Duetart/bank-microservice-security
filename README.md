@@ -64,23 +64,6 @@ docs/               аналитический PDF и Secure SDLC
 .github/workflows/  предлагаемый GitHub Actions workflow
 ```
 
-## Воспроизведение SAST
-
-Из корня репозитория в Linux/WSL:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install semgrep==1.186.0
-ADD_MANUAL_IDOR=1 bash scripts/scan.sh
-```
-
-Новые результаты сохраняются в `sast/generated/`, не перезаписывая доказательства в `sast/evidence/`. `ADD_MANUAL_IDOR=1` добавляет историческую ручную находку только для исходной версии задания; после изменения кода требуется повторный ручной анализ.
-
-Проверка целостности приложенных материалов: `sha256sum -c sast/evidence/SHA256SUMS`.
-
-GitHub Actions содержит предлагаемый режим report-only: автоматический SAST при pull request и ручном запуске, JSON сохраняется в артефактах. Workflow добавлен как демонстрация процесса и ещё не выполнялся на GitHub. Блокирующая политика релиза описана в [Secure SDLC](docs/secure-sdlc.md).
-
 ## Ограничения
 
 Исходники имеют дефекты запуска: несовпадение импортируемых имён в `main.py` с определениями в `security.py` и `schemas.py`, отсутствует Dockerfile. Анализ статический, модель описывает предполагаемую работу сервиса. Исправление кода и развёртывание не входят в задание. SCA зависимостей не выполнялся.

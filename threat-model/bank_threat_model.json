@@ -1,0 +1,613 @@
+{
+  "version": "2.0",
+  "summary": {
+    "title": "Bank Microservice — модель угроз",
+    "owner": "",
+    "description": "STRIDE. Статическая модель предполагаемой архитектуры. SQLi не подтверждена; риски открыты. Порты PostgreSQL и Redis опубликованы на хосте, что позволяет потенциально обходить API при доступности сети.",
+    "id": 0
+  },
+  "detail": {
+    "contributors": [],
+    "reviewer": "",
+    "diagramTop": 1,
+    "threatTop": 3,
+    "diagrams": [
+      {
+        "id": 0,
+        "title": "DFD — переводы и история",
+        "version": "2.0",
+        "diagramType": "STRIDE",
+        "thumbnail": "./public/content/images/thumbnail.stride.jpg",
+        "description": "TB1 — внешняя граница, TB2 — логическая граница данных. TLS не показан. Прямой доступ к опубликованным портам — инфраструктурный риск, не штатный поток.",
+        "cells": [
+          {
+            "id": "c18d90c6-659b-40a5-a53b-fd5bbcad6b8b",
+            "shape": "actor",
+            "zIndex": 5,
+            "position": {
+              "x": 30,
+              "y": 200
+            },
+            "size": {
+              "width": 150,
+              "height": 75
+            },
+            "attrs": {
+              "text": {
+                "text": "Пользователь"
+              },
+              "body": {
+                "stroke": "#333333",
+                "strokeWidth": 1,
+                "strokeDasharray": ""
+              }
+            },
+            "data": {
+              "name": "Пользователь",
+              "description": "Внешний клиент, недоверенный X-User-Id.",
+              "type": "tm.Actor",
+              "isTrustBoundary": false,
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "threats": [],
+              "hasOpenThreats": false,
+              "providesAuthentication": false
+            }
+          },
+          {
+            "id": "82da3eac-2b55-48f4-845d-e6677912abe4",
+            "shape": "process",
+            "zIndex": 5,
+            "position": {
+              "x": 420,
+              "y": 160
+            },
+            "size": {
+              "width": 155,
+              "height": 155
+            },
+            "attrs": {
+              "text": {
+                "text": "FastAPI\nREST :8000"
+              },
+              "body": {
+                "stroke": "red",
+                "strokeWidth": 3,
+                "strokeDasharray": ""
+              }
+            },
+            "data": {
+              "name": "FastAPI\nREST :8000",
+              "description": "POST /transfer; GET /transactions. Модель предполагаемой работы после устранения дефектов запуска.",
+              "type": "tm.Process",
+              "isTrustBoundary": false,
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "threats": [
+                {
+                  "id": "96f8689f-9d55-44fd-bb10-4096b4ef0218",
+                  "number": 1,
+                  "title": "T01 Подмена личности и BOLA/IDOR",
+                  "type": "Spoofing",
+                  "modelType": "STRIDE",
+                  "severity": "High",
+                  "status": "Open",
+                  "score": "5×5=25",
+                  "description": "B01, B02. 5×5=25. API доверяет X-User-Id; доступ к истории и переводам чужого клиента при работоспособном API. Утечка банковской тайны, несанкционированные списания, компенсации.",
+                  "mitigation": "Техническая / код: проверять JWT (подпись, iss, aud, exp), получать subject только из доверенного токена; привязывать проверки владения и запросы к subject. Архитектурная / инфраструктура: IdP и API gateway с TLS; запрещать прямой обход gateway. Процессная / SDLC: обязательные тесты доступа между двумя клиентами и review авторизации."
+                },
+                {
+                  "id": "b22003fa-89cc-46b1-9457-e3d1236a8737",
+                  "number": 2,
+                  "title": "T02 Нарушение целостности баланса (race condition)",
+                  "type": "Tampering",
+                  "modelType": "STRIDE",
+                  "severity": "High",
+                  "status": "Open",
+                  "score": "4×5=20",
+                  "description": "B03, B07, B10. 4×5=20. Параллельные переводы читают баланс без блокировки до списания; транзакция сама по себе не предотвращает гонку. Возможны отрицательный баланс, финансовые потери и нарушение сверки.",
+                  "mitigation": "Техническая / код: условное атомарное списание или SELECT FOR UPDATE в стабильном порядке, проверка результата, идемпотентность. Архитектурная / БД: CHECK баланса и суммы, FK, единая ACID-транзакция. Процессная / SDLC: конкурентные тесты, проверка инвариантов и сверка."
+                }
+              ],
+              "hasOpenThreats": true,
+              "isWebApplication": true
+            }
+          },
+          {
+            "id": "6a662daf-7485-4a9f-990b-63900e9e8458",
+            "shape": "store",
+            "zIndex": 5,
+            "position": {
+              "x": 830,
+              "y": 45
+            },
+            "size": {
+              "width": 190,
+              "height": 80
+            },
+            "attrs": {
+              "text": {
+                "text": "PostgreSQL :5432"
+              },
+              "topLine": {
+                "stroke": "red",
+                "strokeWidth": 3,
+                "strokeDasharray": ""
+              },
+              "bottomLine": {
+                "stroke": "red",
+                "strokeWidth": 3,
+                "strokeDasharray": ""
+              }
+            },
+            "data": {
+              "name": "PostgreSQL :5432",
+              "description": "accounts, transactions; постоянное хранилище.",
+              "type": "tm.Store",
+              "isTrustBoundary": false,
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "threats": [
+                {
+                  "id": "f717f1f7-8ad2-415f-9ee5-7351e0fe739c",
+                  "number": 3,
+                  "title": "T03 Компрометация PostgreSQL",
+                  "type": "Information disclosure",
+                  "modelType": "STRIDE",
+                  "severity": "High",
+                  "status": "Open",
+                  "score": "4×5=20",
+                  "description": "B04. 4×5=20. Публикация 5432 и известные привилегированные реквизиты postgres позволяют при сетевой доступности читать и менять балансы и историю в обход API. Риск массовой утечки, мошенничества и остановки операций.",
+                  "mitigation": "Техническая / инфраструктура: ротировать пароль, хранить в менеджере секретов, использовать отдельную непривилегированную роль и TLS. Архитектурная / инфраструктура: закрыть порт на хосте, приватная сеть и ACL только от API. Процессная / SDLC: secret scanning, IaC review и проверка недоступности порта до релиза."
+                }
+              ],
+              "hasOpenThreats": true,
+              "storesCredentials": false,
+              "isEncrypted": false,
+              "isALog": false
+            }
+          },
+          {
+            "id": "da2983de-7143-47c7-b75c-d30bf536f11f",
+            "shape": "store",
+            "zIndex": 5,
+            "position": {
+              "x": 830,
+              "y": 370
+            },
+            "size": {
+              "width": 190,
+              "height": 80
+            },
+            "attrs": {
+              "text": {
+                "text": "Redis :6379"
+              },
+              "topLine": {
+                "stroke": "#333333",
+                "strokeWidth": 1,
+                "strokeDasharray": ""
+              },
+              "bottomLine": {
+                "stroke": "#333333",
+                "strokeWidth": 1,
+                "strokeDasharray": ""
+              }
+            },
+            "data": {
+              "name": "Redis :6379",
+              "description": "GET и DEL; заполнение кеша отсутствует.",
+              "type": "tm.Store",
+              "isTrustBoundary": false,
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "threats": [],
+              "hasOpenThreats": false,
+              "isEncrypted": false,
+              "isALog": false,
+              "storesCredentials": false
+            }
+          },
+          {
+            "id": "fcc5cd8e-bf58-4be8-8f3e-b862c122f8b2",
+            "shape": "flow",
+            "zIndex": 10,
+            "width": 200,
+            "height": 100,
+            "connector": "smooth",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "strokeWidth": 1,
+                "strokeDasharray": "",
+                "targetMarker": {
+                  "name": "block"
+                }
+              }
+            },
+            "data": {
+              "type": "tm.Flow",
+              "name": "F1 HTTP запрос",
+              "description": "X-User-Id; POST /transfer: from_account_id, to_account_id, amount_cents; GET /transactions: limit, search.",
+              "protocol": "HTTP",
+              "isPublicNetwork": true,
+              "isEncrypted": false,
+              "isTrustBoundary": false,
+              "outOfScope": false,
+              "hasOpenThreats": false,
+              "threats": []
+            },
+            "labels": [
+              {
+                "position": 0.5,
+                "attrs": {
+                  "label": {
+                    "text": "F1 HTTP запрос"
+                  }
+                }
+              }
+            ],
+            "source": {
+              "cell": "c18d90c6-659b-40a5-a53b-fd5bbcad6b8b"
+            },
+            "target": {
+              "cell": "82da3eac-2b55-48f4-845d-e6677912abe4"
+            },
+            "vertices": [
+              {
+                "x": 295,
+                "y": 185
+              }
+            ]
+          },
+          {
+            "id": "9ff688bb-9931-4327-be71-9df638c5f593",
+            "shape": "flow",
+            "zIndex": 10,
+            "width": 200,
+            "height": 100,
+            "connector": "smooth",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "strokeWidth": 1,
+                "strokeDasharray": "",
+                "targetMarker": {
+                  "name": "block"
+                }
+              }
+            },
+            "data": {
+              "type": "tm.Flow",
+              "name": "F2 HTTP ответ",
+              "description": "status, transaction_id или история и ошибки.",
+              "protocol": "HTTP",
+              "isPublicNetwork": true,
+              "isEncrypted": false,
+              "isTrustBoundary": false,
+              "outOfScope": false,
+              "hasOpenThreats": false,
+              "threats": []
+            },
+            "labels": [
+              {
+                "position": 0.5,
+                "attrs": {
+                  "label": {
+                    "text": "F2 HTTP ответ"
+                  }
+                }
+              }
+            ],
+            "source": {
+              "cell": "82da3eac-2b55-48f4-845d-e6677912abe4"
+            },
+            "target": {
+              "cell": "c18d90c6-659b-40a5-a53b-fd5bbcad6b8b"
+            },
+            "vertices": [
+              {
+                "x": 295,
+                "y": 295
+              }
+            ]
+          },
+          {
+            "id": "53a6c1da-ea8f-43e7-ba2c-3bc6f701d0b1",
+            "shape": "flow",
+            "zIndex": 10,
+            "width": 200,
+            "height": 100,
+            "connector": "smooth",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "strokeWidth": 1,
+                "strokeDasharray": "",
+                "targetMarker": {
+                  "name": "block"
+                }
+              }
+            },
+            "data": {
+              "type": "tm.Flow",
+              "name": "F3 SQL запросы",
+              "description": "SELECT, UPDATE, INSERT; проверка владельца, баланс, перевод, история.",
+              "protocol": "PostgreSQL/TCP",
+              "isPublicNetwork": false,
+              "isEncrypted": false,
+              "isTrustBoundary": false,
+              "outOfScope": false,
+              "hasOpenThreats": false,
+              "threats": []
+            },
+            "labels": [
+              {
+                "position": 0.5,
+                "attrs": {
+                  "label": {
+                    "text": "F3 SQL запросы"
+                  }
+                }
+              }
+            ],
+            "source": {
+              "cell": "82da3eac-2b55-48f4-845d-e6677912abe4"
+            },
+            "target": {
+              "cell": "6a662daf-7485-4a9f-990b-63900e9e8458"
+            },
+            "vertices": [
+              {
+                "x": 670,
+                "y": 75
+              }
+            ]
+          },
+          {
+            "id": "6c5ff86e-c503-4d0e-a864-513e3a668029",
+            "shape": "flow",
+            "zIndex": 10,
+            "width": 200,
+            "height": 100,
+            "connector": "smooth",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "strokeWidth": 1,
+                "strokeDasharray": "",
+                "targetMarker": {
+                  "name": "block"
+                }
+              }
+            },
+            "data": {
+              "type": "tm.Flow",
+              "name": "F4 SQL результаты",
+              "description": "Владелец, баланс, tx_id, строки истории, ошибки.",
+              "protocol": "PostgreSQL/TCP",
+              "isPublicNetwork": false,
+              "isEncrypted": false,
+              "isTrustBoundary": false,
+              "outOfScope": false,
+              "hasOpenThreats": false,
+              "threats": []
+            },
+            "labels": [
+              {
+                "position": 0.5,
+                "attrs": {
+                  "label": {
+                    "text": "F4 SQL результаты"
+                  }
+                }
+              }
+            ],
+            "source": {
+              "cell": "6a662daf-7485-4a9f-990b-63900e9e8458"
+            },
+            "target": {
+              "cell": "82da3eac-2b55-48f4-845d-e6677912abe4"
+            },
+            "vertices": [
+              {
+                "x": 730,
+                "y": 170
+              }
+            ]
+          },
+          {
+            "id": "c9935e8d-5d1c-40b3-a3b5-c7b894cd7bc3",
+            "shape": "flow",
+            "zIndex": 10,
+            "width": 200,
+            "height": 100,
+            "connector": "smooth",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "strokeWidth": 1,
+                "strokeDasharray": "",
+                "targetMarker": {
+                  "name": "block"
+                }
+              }
+            },
+            "data": {
+              "type": "tm.Flow",
+              "name": "F5 GET / DEL",
+              "description": "Ключ tx:{uid}:{limit}:{search}; DEL tx:{uid}.",
+              "protocol": "RESP/TCP",
+              "isPublicNetwork": false,
+              "isEncrypted": false,
+              "isTrustBoundary": false,
+              "outOfScope": false,
+              "hasOpenThreats": false,
+              "threats": []
+            },
+            "labels": [
+              {
+                "position": 0.5,
+                "attrs": {
+                  "label": {
+                    "text": "F5 GET / DEL"
+                  }
+                }
+              }
+            ],
+            "source": {
+              "cell": "82da3eac-2b55-48f4-845d-e6677912abe4"
+            },
+            "target": {
+              "cell": "da2983de-7143-47c7-b75c-d30bf536f11f"
+            },
+            "vertices": [
+              {
+                "x": 670,
+                "y": 345
+              }
+            ]
+          },
+          {
+            "id": "b972180d-9074-4432-8942-074154d9d6d1",
+            "shape": "flow",
+            "zIndex": 10,
+            "width": 200,
+            "height": 100,
+            "connector": "smooth",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "strokeWidth": 1,
+                "strokeDasharray": "",
+                "targetMarker": {
+                  "name": "block"
+                }
+              }
+            },
+            "data": {
+              "type": "tm.Flow",
+              "name": "F6 Ответ Redis",
+              "description": "Значение или отсутствие ключа; результат DEL.",
+              "protocol": "RESP/TCP",
+              "isPublicNetwork": false,
+              "isEncrypted": false,
+              "isTrustBoundary": false,
+              "outOfScope": false,
+              "hasOpenThreats": false,
+              "threats": []
+            },
+            "labels": [
+              {
+                "position": 0.5,
+                "attrs": {
+                  "label": {
+                    "text": "F6 Ответ Redis"
+                  }
+                }
+              }
+            ],
+            "source": {
+              "cell": "da2983de-7143-47c7-b75c-d30bf536f11f"
+            },
+            "target": {
+              "cell": "82da3eac-2b55-48f4-845d-e6677912abe4"
+            },
+            "vertices": [
+              {
+                "x": 730,
+                "y": 445
+              }
+            ]
+          },
+          {
+            "id": "d18120ff-f2bc-401b-81e9-b6e2364b8a04",
+            "shape": "trust-boundary-curve",
+            "zIndex": 2,
+            "width": 200,
+            "height": 100,
+            "connector": "smooth",
+            "attrs": {
+              "line": {
+                "targetMarker": "",
+                "sourceMarker": "",
+                "stroke": "#888888",
+                "strokeWidth": 2,
+                "strokeDasharray": "6 4"
+              }
+            },
+            "labels": [
+              {
+                "position": 0.08,
+                "attrs": {
+                  "text": {
+                    "text": "TB1: клиент / API"
+                  }
+                }
+              }
+            ],
+            "data": {
+              "type": "tm.Boundary",
+              "name": "TB1: клиент / API",
+              "description": "Логическая граница; изоляция не доказана.",
+              "isTrustBoundary": true,
+              "hasOpenThreats": false
+            },
+            "source": {
+              "x": 335,
+              "y": 10
+            },
+            "target": {
+              "x": 335,
+              "y": 510
+            },
+            "vertices": []
+          },
+          {
+            "id": "298ef740-626e-44d8-9b5f-8f7ac99bfb6f",
+            "shape": "trust-boundary-curve",
+            "zIndex": 2,
+            "width": 200,
+            "height": 100,
+            "connector": "smooth",
+            "attrs": {
+              "line": {
+                "targetMarker": "",
+                "sourceMarker": "",
+                "stroke": "#888888",
+                "strokeWidth": 2,
+                "strokeDasharray": "6 4"
+              }
+            },
+            "labels": [
+              {
+                "position": 0.08,
+                "attrs": {
+                  "text": {
+                    "text": "TB2: API / данные"
+                  }
+                }
+              }
+            ],
+            "data": {
+              "type": "tm.Boundary",
+              "name": "TB2: API / данные",
+              "description": "Логическая граница; изоляция не доказана.",
+              "isTrustBoundary": true,
+              "hasOpenThreats": false
+            },
+            "source": {
+              "x": 780,
+              "y": 10
+            },
+            "target": {
+              "x": 780,
+              "y": 510
+            },
+            "vertices": []
+          }
+        ]
+      }
+    ]
+  }
+}
